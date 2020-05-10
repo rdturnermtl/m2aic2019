@@ -45,8 +45,6 @@ import platform
 
 import re
 
-import pdb
-
 # ================ Small auxiliary functions =================
 
 
@@ -61,8 +59,6 @@ def read_as_df(basename, type="train", task='binary.classification'):
     	print('Reading '+ basename + '_' + type + ' from CSV')
     	XY = pd.read_csv(csvfile)
     	return XY
-    
-    # pdb.set_trace()
 
     print('Reading '+ basename + '_' + type+ ' from AutoML format')
 
@@ -101,6 +97,8 @@ def read_as_df(basename, type="train", task='binary.classification'):
         Y = Y.iloc[:, 0]
         assert isinstance(Y, pd.Series)
         Y = Y.map(vals.index)
+
+        assert isinstance(Y, pd.Series)
         assert Y.dtype.kind == "i"
         assert sorted(set(Y.values.ravel())) == list(range(n_classes))  # Assuming all possible labels present
     elif task == "multiclass.classification":
@@ -109,16 +107,16 @@ def read_as_df(basename, type="train", task='binary.classification'):
         assert set(Y.values.ravel()) == set([0, 1])
 
         assert np.all(np.sum(Y.values, axis=1) == 1)
-        # TODO bring back
-        # assert np.all(np.sum(Y.values, axis=0) >= 1)
+
+        if not np.all(np.sum(Y.values, axis=0) >= 1):
+            warnings.warn("Not all labels seen.")
 
         _, n_classes = Y.shape
         Y = np.sum(Y * np.arange(n_classes), axis=1)
-        assert isinstance(Y, pd.Series)
 
-        vals = sorted(set(Y.values.ravel()))
-        # TODO bring back
-        # assert vals == list(range(n_classes))  # Assuming all possible labels present
+        assert isinstance(Y, pd.Series)
+        assert Y.dtype.kind == "i"
+        assert set(Y.values.ravel()) <= set(range(n_classes))
     elif task == "multilabel.classification":
         assert Y.shape[1] >= 1
         assert all(dd.kind == "i" for dd in Y.dtypes)
@@ -132,24 +130,26 @@ def read_as_df(basename, type="train", task='binary.classification'):
 
         n_classes = 2
         Y = Y.iloc[:, idx]
-        assert isinstance(Y, pd.Series)
 
+        assert isinstance(Y, pd.Series)
         assert Y.dtype.kind == "i"
-        assert sorted(set(Y.values.ravel())) == list(range(n_classes))  # Assuming all possible labels present
+        assert set(Y.values.ravel()) <= set(range(n_classes))
     elif task == "regression":
         assert Y.shape[1] == 1
 
         Y = Y.iloc[:, 0]
         assert isinstance(Y, pd.Series)
-        # TODO bring back
-        assert Y.dtype.kind in ("f", "i")
+        assert Y.dtype.kind in ("i", "f")
 
         Y = Y.astype(np.float_)
 
+        assert isinstance(Y, pd.Series)
+        assert Y.dtype.kind == "f"
         assert np.all(np.isfinite(Y.values))
     else:
         assert False, "don't support %s yet" % task
 
+    assert isinstance(Y, pd.Series)
     assert Y.shape == (n_cases,)
 
     XY["target"] = Y
