@@ -35,7 +35,7 @@ for data_name in datasets:
             task = dm.getTypeProblem(solution_file)
 
             data = read_as_df(basename, type=type_, task=task)
-        except Exception as inst:
+        except RuntimeError as inst:
             print(type(inst))
             print(inst.args)
             print(inst)
