@@ -142,7 +142,10 @@ def read_as_df(basename, type="train", task='binary.classification'):
         Y = Y.iloc[:, 0]
         assert isinstance(Y, pd.Series)
         # TODO bring back
-        #assert Y.dtype.kind == "f"
+        assert Y.dtype.kind in ("f", "i")
+
+        Y = Y.astype(np.float_)
+
         assert np.all(np.isfinite(Y.values))
     else:
         assert False, "don't support %s yet" % task
