@@ -20,6 +20,7 @@ try:
     from reprlib import repr
 except ImportError:
     pass
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -42,9 +43,11 @@ import csv
 #import psutil
 import platform
 
+import pdb
+
 # ================ Small auxiliary functions =================
 
-def read_as_df(basename, type="train"):
+def read_as_df(basename, type="train", task='binary.classification'):
     ''' Function to read the AutoML format and return a Panda Data Frame '''
     csvfile = basename + '_' + type + '.csv'
     if isfile(csvfile):
@@ -53,36 +56,84 @@ def read_as_df(basename, type="train"):
     	return XY
     	
     print('Reading '+ basename + '_' + type+ ' from AutoML format')
-    feat_name = pd.read_csv(basename + '_feat.name', header=None)
-    label_name = pd.read_csv(basename + '_label.name', header=None, names =['Class'])
-    X = pd.read_csv(basename + '_' + type + '.data', sep=' ', names = np.ravel(feat_name))
+    feat_name = pd.read_csv(basename + '_feat.name', header=None, index_col=False)
+    # Don't need to labels anymore:
+    # label_name = pd.read_csv(basename + '_label.name', header=None, names =['Class'], index_col=False)
+    X = pd.read_csv(basename + '_' + type + '.data', sep=' ', names = np.ravel(feat_name), index_col=False, nrows=50)
     [patnum, featnum] = X.shape
     print('Number of examples = %d' % patnum)
     print('Number of features = %d' % featnum)
     
     XY=X
     Y=[]
+
     solution_file = basename + '_' + type + '.solution'
-    if isfile(solution_file):
-    	# This was reading the original multi-column 1-hot encoding
-        Y = data(solution_file)
-        [patnum2, classnum] = Y.shape
-        assert(patnum==patnum2)
-        if classnum==1:
-        	classnum=np.amax(Y)+1
-        	numerical_target=pd.DataFrame({'Class':Y[:,0].astype(int)})
-        else:
-        	Y = pd.read_csv(solution_file, sep=' ', names = np.ravel(label_name))
-        	label_range = np.arange(classnum).transpose()         # This is just a column vector [[0], [1], [2]]
-        	numerical_target = Y.dot(label_range)                 # This is a column vector of dim patnum with numerical categories
-        #print(numerical_target)
-        # Here we add the target values as a last column, this is convenient to use seaborn
-        # Look at http://seaborn.pydata.org/tutorial/axis_grids.html for other ideas
-        #label_name = pd.DataFrame(['0', '1', '2'], columns=['col'])
-        print(label_name)
-        nominal_target = pd.Series(np.array(label_name)[numerical_target].ravel()) # Same with nominal categories
-        print('Number of classes = %d' % classnum)
-        XY = X.assign(target=nominal_target.values)          # Add the last column
+    assert isfile(solution_file)
+
+    Y = pd.read_csv(solution_file, sep=r'\s', header=None, index_col=False, nrows=50)
+    n_cases, _ = Y.shape
+    assert len(X) == n_cases
+
+    # pdb.set_trace()
+
+    if task == 'binary.classification':
+        assert Y.shape[1] == 1
+
+        n_classes = 2
+
+        vals = sorted(set(Y.values.ravel()))
+        assert len(vals) == n_classes  # Assuming all possible labels present
+
+        Y = Y.iloc[:, 0]
+        assert isinstance(Y, pd.Series)
+        Y = Y.map(vals.index)
+        assert Y.dtype.kind == "i"
+        assert sorted(set(Y.values.ravel())) == list(range(n_classes))  # Assuming all possible labels present
+    elif task == "multiclass.classification":
+        assert Y.shape[1] >= 1
+        assert all(dd.kind == "i" for dd in Y.dtypes)
+        assert set(Y.values.ravel()) == set([0, 1])
+
+        assert np.all(np.sum(Y.values, axis=1) == 1)
+        assert np.all(np.sum(Y.values, axis=0) >= 1)
+
+        _, n_classes = Y.shape
+        Y = np.sum(Y * np.arange(n_classes), axis=1)
+        assert isinstance(Y, pd.Series)
+
+        vals = sorted(set(Y.values.ravel()))
+        assert vals == list(range(n_classes))  # Assuming all possible labels present
+    elif task == "multilabel.classification":
+        assert Y.shape[1] >= 1
+        assert all(dd.kind == "i" for dd in Y.dtypes)
+        assert set(Y.values.ravel()) == set([0, 1])  # Assuming binary
+
+        if np.all(np.sum(Y.values, axis=1) == 1):
+            warnings.warn("%s appears to be a one-hot file, but coded as multi-label!" % basename)
+
+        balance = np.mean(Y.values, axis=0)
+        idx = np.argmin(np.abs(balance - 0.5))  # Use the most balanced label, for now
+
+        n_classes = 2
+        Y = Y.iloc[:, idx]
+        assert isinstance(Y, pd.Series)
+
+        assert Y.dtype.kind == "i"
+        assert sorted(set(Y.values.ravel())) == list(range(n_classes))  # Assuming all possible labels present
+    elif task == "regression":
+        assert Y.shape[1] == 1
+
+        Y = Y.iloc[:, 0]
+        assert isinstance(Y, pd.Series)
+        assert Y.dtype.kind == "f"
+        assert np.all(np.isfinite(Y.values))
+    else:
+        assert False, "don't support %s yet" % task
+
+    assert Y.shape == (n_cases,)
+
+    XY["target"] = Y
+    assert XY.columns[-1] == "target"
     
     return XY
     
