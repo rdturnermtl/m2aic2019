@@ -60,9 +60,9 @@ for data_name in datasets:
 
             # Check dtypes
             assert all(dd in (np.int_, np.float_) for dd in df.dtypes)
-            cat_cols = sorted(cc for cc in df.columns if cc.endswith("_cat") or df[cc].dtype.kind == "O")
-            print(cat_cols)
-            assert len(cat_cols) == 0
+            assert len(sorted(cc for cc in df.columns if cc.endswith("_cat") or df[cc].dtype.kind == "O")) == 0
+            dtype_dict = {cc: np.float_ for cc in df.columns if cc != "target"}
+            df = df.astype(dtype_dict)
 
             # Remove all missing col
             all_missing = df.isnull().any(axis=0)
