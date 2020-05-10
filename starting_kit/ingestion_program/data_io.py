@@ -86,13 +86,9 @@ def read_as_df(basename, type="train", task='binary.classification'):
     solution_file = basename + '_' + type + '.solution'
     assert isfile(solution_file)
 
-    # pdb.set_trace()
-
-    Y = pd.read_csv(solution_file, sep=r'\s', header=None, index_col=False, nrows=50)
+    Y = pd.read_csv(solution_file, delim_whitespace=True, header=None, index_col=False, nrows=50)
     n_cases, _ = Y.shape
     assert len(X) == n_cases
-
-    # pdb.set_trace()
 
     if task == 'binary.classification':
         assert Y.shape[1] == 1
