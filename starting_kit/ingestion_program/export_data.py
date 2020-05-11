@@ -12,6 +12,7 @@ input_dir = "~/bo_comp_data/auto_ml_data"
 output_dir = "~/bo_comp_data/auto_ml_data_export"
 type_ = "train"
 skip = ()
+max_rows = None
 
 q_level = 0.86
 clip_x = 100
@@ -54,7 +55,7 @@ for data_name in datasets:
             continue
         assert format_ == "dense"
 
-        df = read_as_df(basename, type=type_, task=task, max_rows=50)
+        df = read_as_df(basename, type=type_, task=task, max_rows=max_rows)
 
         # Validate cols and index
         assert len(set(df.columns.tolist())) == df.shape[1]
