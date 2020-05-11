@@ -52,7 +52,17 @@ def clean(varStr):
     return re.sub('\W|^(?=\d)', '_', varStr)
 
 
-def read_as_df(basename, type="train", task='binary.classification'):
+def uniquify_str_seq(L):
+    D = {}
+    Lu = []
+    for ii, el in enumerate(L):
+        cnt = D.setdefault(el, 0)
+        Lu.append("%s_%d" % (el, cnt))
+        D[el] = cnt + 1
+    return Lu
+
+
+def read_as_df(basename, type="train", task='binary.classification', max_rows=None):
     ''' Function to read the AutoML format and return a Panda Data Frame '''
     csvfile = basename + '_' + type + '.csv'
     if isfile(csvfile):
@@ -64,8 +74,7 @@ def read_as_df(basename, type="train", task='binary.classification'):
 
     with open(basename + '_feat.name', "r") as f:
         feat_name = f.read().splitlines()
-
-    feat_name = ["c%d_%s" % (ii, clean(cc)) for ii, cc in enumerate(feat_name)]
+    feat_name = uniquify_str_seq(map(clean, feat_name))
     assert all(cc.isidentifier() for cc in feat_name)
     assert len(set(feat_name)) == len(feat_name)
 
@@ -73,10 +82,10 @@ def read_as_df(basename, type="train", task='binary.classification'):
     # label_name = pd.read_csv(basename + '_label.name', header=None, names =['Class'], index_col=False)
 
     try:
-        X = pd.read_csv(basename + '_' + type + '.data', delim_whitespace=True, names = np.ravel(feat_name), index_col=False)
+        X = pd.read_csv(basename + '_' + type + '.data', delim_whitespace=True, names = np.ravel(feat_name), index_col=False, nrows=max_rows)
     except pd.errors.ParserError:
         warnings.warn("Parsing error with pandas.")
-        X = pd.read_csv(basename + '_' + type + '.data', delim_whitespace=True, names = np.ravel(feat_name), index_col=False, engine="python")
+        X = pd.read_csv(basename + '_' + type + '.data', delim_whitespace=True, names = np.ravel(feat_name), index_col=False, nrows=max_rows, engine="python")
 
     [patnum, featnum] = X.shape
     print('Number of examples = %d' % patnum)
@@ -88,7 +97,7 @@ def read_as_df(basename, type="train", task='binary.classification'):
     solution_file = basename + '_' + type + '.solution'
     assert isfile(solution_file)
 
-    Y = pd.read_csv(solution_file, delim_whitespace=True, header=None, index_col=False)
+    Y = pd.read_csv(solution_file, delim_whitespace=True, header=None, index_col=False, nrows=max_rows)
     n_cases, _ = Y.shape
     assert len(X) == n_cases
 
