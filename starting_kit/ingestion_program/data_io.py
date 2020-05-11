@@ -71,7 +71,13 @@ def read_as_df(basename, type="train", task='binary.classification'):
 
     # Don't need to labels anymore:
     # label_name = pd.read_csv(basename + '_label.name', header=None, names =['Class'], index_col=False)
-    X = pd.read_csv(basename + '_' + type + '.data', sep=' ', names = np.ravel(feat_name), index_col=False, nrows=50)
+
+    try:
+        X = pd.read_csv(basename + '_' + type + '.data', delim_whitespace=True, names = np.ravel(feat_name), index_col=False)
+    except pd.errors.ParserError:
+        warnings.warn("Parsing error with pandas.")
+        X = pd.read_csv(basename + '_' + type + '.data', delim_whitespace=True, names = np.ravel(feat_name), index_col=False, engine="python")
+
     [patnum, featnum] = X.shape
     print('Number of examples = %d' % patnum)
     print('Number of features = %d' % featnum)
@@ -82,7 +88,7 @@ def read_as_df(basename, type="train", task='binary.classification'):
     solution_file = basename + '_' + type + '.solution'
     assert isfile(solution_file)
 
-    Y = pd.read_csv(solution_file, delim_whitespace=True, header=None, index_col=False, nrows=50)
+    Y = pd.read_csv(solution_file, delim_whitespace=True, header=None, index_col=False)
     n_cases, _ = Y.shape
     assert len(X) == n_cases
 
