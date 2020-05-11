@@ -1,25 +1,27 @@
-import warnings
-from data_io import read_as_df
 import os
-from data_manager import DataManager
+import warnings
+
 import numpy as np
+from data_io import read_as_df
+from data_manager import DataManager
 
 from bayesmark.data import _csv_loader
 from bayesmark.stats import robust_standardize
 
-
-input_dir = '~/bo_comp_data/auto_ml_data'
-output_dir = '~/bo_comp_data/auto_ml_data_export'
+input_dir = "~/bo_comp_data/auto_ml_data"
+output_dir = "~/bo_comp_data/auto_ml_data_export"
 type_ = "train"
 skip = ()
 
 q_level = 0.86
 clip_x = 100
 
-task_map = {'binary.classification': "clf",
-            "multiclass.classification": "clf",
-            "multilabel.classification": "clf",
-            "regression": "reg"}
+task_map = {
+    "binary.classification": "clf",
+    "multiclass.classification": "clf",
+    "multilabel.classification": "clf",
+    "regression": "reg",
+}
 
 input_dir = os.path.expanduser(input_dir)
 print(input_dir)
@@ -41,10 +43,10 @@ for data_name in datasets:
         basename = os.path.join(input_dir, data_name, data_name)
 
         dm = DataManager(basename)
-        solution_file = basename + '_' + type_ + '.solution'
+        solution_file = basename + "_" + type_ + ".solution"
         task = dm.getTypeProblem(solution_file)
 
-        format_ = dm.getFormatData(basename + '_train.data')
+        format_ = dm.getFormatData(basename + "_train.data")
         print(f"format: {format_}")
 
         if format_ in ("sparse", "sparse_binary"):
@@ -92,12 +94,14 @@ for data_name in datasets:
 
         # Export
         print(f"writing {data_name}")
-        df.to_csv(export_name, na_rep='', header=True, index=False)
+        df.to_csv(export_name, na_rep="", header=True, index=False)
 
         # Load in from Bayesmark for round-trip test
         dataset_name = "%s-%s" % (task_map[task], data_name)
         print(dataset_name)
-        data_bm, target_bm, problem_type_bm = _csv_loader(dataset_name, return_X_y=True, data_root=output_dir, clip_x=clip_x)
+        data_bm, target_bm, problem_type_bm = _csv_loader(
+            dataset_name, return_X_y=True, data_root=output_dir, clip_x=clip_x
+        )
         print(str(problem_type_bm))
 
         # Do same pre-proc on original data
